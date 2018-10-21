@@ -3,7 +3,8 @@
 randn('state',1)
 k7= -4.448; k8=1;
 N=500; Ts=0.1;
-x(:,1)=[0.2 -0.6 -0.4 0.1 0.3]; % initial condition
+x_initial=[0.2 -0.6 -0.4 0.1 0.3];
+x(:,1)=x_initial; % initial condition
 u=[1 1 0];  % constant input 
 Q=(1e-4)*eye(5);mw=[0 0 0 0 0];
 R=(1e-2)*eye(2); mv=[0 0];
@@ -49,16 +50,16 @@ for i=1:N
 end
 %% plots for KF
 figure(1)
-subplot(321),plot(T,x(1,:),T,xkk(1,:)), ylabel('x_1 (flux)'), title('State Variables'),legend('true', 'estimated')
-subplot(322),plot(T,x(2,:),T,xkk(2,:)), ylabel('x_2 (flux)'), title('State Variables'),legend('true', 'estimated')
-subplot(323),plot(T,x(3,:),T,xkk(3,:)), ylabel('x_3 (flux)'), title('State Variables'),legend('true', 'estimated')
-subplot(324),plot(T,x(4,:),T,xkk(4,:)), ylabel('x_4 (flux)'), title('State Variables'),legend('true', 'estimated')
-subplot(325),plot(T,x(5,:),T,xkk(5,:)), ylabel('x_5 (angular velocity)'), title('State Variables'),legend('true', 'estimated')
+subplot(321),plot(T,x(1,:),T,xkk(1,:)), ylabel('x_1 (flux)'), title('KF'),legend('true', 'estimated')
+subplot(322),plot(T,x(2,:),T,xkk(2,:)), ylabel('x_2 (flux)'), title('KF'),legend('true', 'estimated')
+subplot(323),plot(T,x(3,:),T,xkk(3,:)), ylabel('x_3 (flux)'), title('KF'),legend('true', 'estimated')
+subplot(324),plot(T,x(4,:),T,xkk(4,:)), ylabel('x_4 (flux)'), title('KF'),legend('true', 'estimated')
+subplot(325),plot(T,x(5,:),T,xkk(5,:)), ylabel('x_5 (angular velocity)'), title('KF'),legend('true', 'estimated')
 
 %% Implementation of EKF
 % measurement generation for EKF
 for i=1:N
-    ey(:,i)=C*x(:,i) + vk(i,:)' ; %measurement in delta y form
+    ey(:,i)=C*x(:,i) + vk(i,:)' ; %measurement in non-delta y form
 end
 exkk(:,1)=0.9*x(:,1); %0.9*initial state 
 ePkk(:,:,1)=eye(5);
@@ -81,15 +82,78 @@ for i=1:N
 end
 %% plots for EKF
 figure(2)
-subplot(321),plot(T,x(1,:),T,exkk(1,:)), ylabel('x_1 (flux)'), title('State Variables'),legend('true', 'estimated')
-subplot(322),plot(T,x(2,:),T,exkk(2,:)), ylabel('x_2 (flux)'), title('State Variables'),legend('true', 'estimated')
-subplot(323),plot(T,x(3,:),T,exkk(3,:)), ylabel('x_3 (flux)'), title('State Variables'),legend('true', 'estimated')
-subplot(324),plot(T,x(4,:),T,exkk(4,:)), ylabel('x_4 (flux)'), title('State Variables'),legend('true', 'estimated')
-subplot(325),plot(T,x(5,:),T,exkk(5,:)), ylabel('x_5 (angular velocity)'), title('State Variables'),legend('true', 'estimated')
-    
-    
+subplot(321),plot(T,x(1,:),T,exkk(1,:)), ylabel('x_1 (flux)'), title('EKF'),legend('true', 'estimated')
+subplot(322),plot(T,x(2,:),T,exkk(2,:)), ylabel('x_2 (flux)'), title('EKF'),legend('true', 'estimated')
+subplot(323),plot(T,x(3,:),T,exkk(3,:)), ylabel('x_3 (flux)'), title('EKF'),legend('true', 'estimated')
+subplot(324),plot(T,x(4,:),T,exkk(4,:)), ylabel('x_4 (flux)'), title('EKF'),legend('true', 'estimated')
+subplot(325),plot(T,x(5,:),T,exkk(5,:)), ylabel('x_5 (angular velocity)'), title('EKF'),legend('true', 'estimated')
 
-    
-    
+%% Implementation of UKF
+M= 5 + length(mw) + length(mv);
+Ns=2*M+1;
+uPkk(:,:,1)=blkdiag(eye(5),Q,R); %combined covariance matrix
+chikk(:,1)=[x_initial';mw';mv'];%combinded state vector
+chikk_i(:,1)=chikk(:,1);
+kappa=2; %tuning parameter
+rho=sqrt(M+kappa);
+omega_i(:,1)=kappa/(M+kappa);
+xhat_kk(:,1)=0.9*x_initial';
+for k =1:N
+    for i=2:Ns  
+        % Sigma point generation
+        if i<=M+1
+            zeta_i=zeros(M,1);
+            zeta_i(i-1)=1;
+            chikk_i(:,i)=chikk(:,k)+ rho*sqrtm(uPkk(:,:,k))*zeta_i;
+            clear zeta_i
+        else
+            zeta_i=zeros(M,1);
+            zeta_i(i-M-1)=1;
+            chikk_i(:,i)=chikk(:,k)- rho*sqrtm(uPkk(:,:,k))*zeta_i;
+            clear zeta_i
+        end
+        % weights generation
+        omega_i(:,i)=1/(2*(M+kappa));
+    end
+    % Propagation of samples through system dynamics
+    x_sample_mean=zeros(5,1);
+    Y_sample_mean=zeros(2,1);
+    PEEkk1=zeros(5);
+    for j=1:Ns
+        xhat_kk1_i(:,j)=xhat_kk(:,k) + Ts*imdyn(1,chikk_i(1:5,j),u) + chikk_i(6:10,j);%addition of noise separately? is this necessary???
+        x_sample_mean=x_sample_mean + omega_i(:,j)*xhat_kk1_i(:,j);
+        E_i(:,j)= xhat_kk1_i(:,j) - xhat_kk(:,k);
+        Y_i(:,j)=C*xhat_kk1_i(:,j) + chikk_i(11:12,j);
+        Y_sample_mean=Y_sample_mean + omega_i(:,j)*Y_i(:,j);
+        PEEkk1 = PEEkk1 + omega_i(:,j)*E_i(:,j)*E_i(:,j)'; %sample covariance
+    end
+    xhat_kk1(:,k)=x_sample_mean;
+    Yhat_kk1(:,k)=Y_sample_mean;
+    for o=1:Ns
+        e_i(:,o)= Y_i(:,o) -  Y_sample_mean;
+    end
+    % sample covariance PEe, Pee calculation
+    PEekk=zeros(5,2);
+    Peekk=zeros(2);
+    for p =1:Ns
+        PEekk= PEekk + omega_i(:,p)*E_i(:,p)*e_i(:,p)';
+        Peekk= Peekk + omega_i(:,p)*e_i(:,p)*e_i(:,p)';
+    end
+    %Kalman Gain Update     
+    Lk=PEekk*inv(Peekk);
+    e(:,k)= ey(:,k) - Yhat_kk1(:,k) ; % innovation % measurement variable ey is taken from above (near EKF)
+    xhat_kk(:,k+1)=xhat_kk1(:,k) + Lk*e(:,k) ; % state update
+    Pkk(:,:,k+1) = PEEkk1 - Lk*Peekk*Lk';  %covariance update
+    uPkk(:,:,k+1)=blkdiag(Pkk(:,:,k+1),Q,R); % the big combined covariance matrix update
+    chikk(:,k+1)= [xhat_kk(:,k+1);mw';mv'];
+end
+%% plots for UKF
+figure(3)
+subplot(321),plot(T,x(1,:),T,xhat_kk(1,:)), ylabel('x_1 (flux)'), title('UKF'),legend('true', 'estimated')
+subplot(322),plot(T,x(2,:),T,xhat_kk(2,:)), ylabel('x_2 (flux)'), title('UKF'),legend('true', 'estimated')
+subplot(323),plot(T,x(3,:),T,xhat_kk(3,:)), ylabel('x_3 (flux)'), title('UKF'),legend('true', 'estimated')
+subplot(324),plot(T,x(4,:),T,xhat_kk(4,:)), ylabel('x_4 (flux)'), title('UKF'),legend('true', 'estimated')
+subplot(325),plot(T,x(5,:),T,xhat_kk(5,:)), ylabel('x_5 (angular velocity)'), title('UKF'),legend('true', 'estimated')
+
 
 
