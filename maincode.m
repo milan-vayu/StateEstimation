@@ -94,58 +94,59 @@ Ns=2*M+1;
 uPkk(:,:,1)=blkdiag(eye(5),Q,R); %combined covariance matrix
 chikk(:,1)=[x_initial';mw';mv'];%combinded state vector
 chikk_i(:,1)=chikk(:,1);
-kappa=2; %tuning parameter
+kappa=1; %tuning parameter
 rho=sqrt(M+kappa);
 omega_i(:,1)=kappa/(M+kappa);
-xhat_kk(:,1)=0.9*x_initial';
+xhat_kk(:,1)=x_initial';
 for k =1:N
-    for i=2:Ns  
+    for i=1:M  
         % Sigma point generation
-        if i<=M+1
-            zeta_i=zeros(M,1);
-            zeta_i(i-1)=1;
-            chikk_i(:,i)=chikk(:,k)+ rho*sqrtm(uPkk(:,:,k))*zeta_i;
-            clear zeta_i
-        else
-            zeta_i=zeros(M,1);
-            zeta_i(i-M-1)=1;
-            chikk_i(:,i)=chikk(:,k)- rho*sqrtm(uPkk(:,:,k))*zeta_i;
-            clear zeta_i
-        end
+        zeta_i=zeros(M,1);
+        zeta_i(i)=1;
+        chikk_i(:,i+1)=chikk(:,k)+ rho*chol(uPkk(:,:,k))*zeta_i;
+        chikk_i(:,i+M+1)=chikk(:,k)- rho*sqrtm(uPkk(:,:,k))*zeta_i;
         % weights generation
-        omega_i(:,i)=1/(2*(M+kappa));
+        omega_i(:,i+1)=1/(2*(M+kappa));
+        omega_i(:,i+M+1)=1/(2*(M+kappa));
     end
     % Propagation of samples through system dynamics
     x_sample_mean=zeros(5,1);
     Y_sample_mean=zeros(2,1);
-    PEEkk1=zeros(5);
+    
     for j=1:Ns
-        xhat_kk1_i(:,j)=xhat_kk(:,k) + Ts*imdyn(1,chikk_i(1:5,j),u) + chikk_i(6:10,j);%addition of noise separately? is this necessary???
+        % Runge Kutta Integration 2nd order
+        x_tilda_k=xhat_kk(:,k) + (Ts/2.0)*imdyn(1,chikk_i(1:5,j),u);
+        xhat_kk1_i(:,j)=xhat_kk(:,k) + Ts*imdyn(1,x_tilda_k,u) + chikk_i(6:10,j);
+%         xhat_kk1_i(:,j)=xhat_kk(:,k) + Ts*imdyn(1,chikk_i(1:5,j),u) + chikk_i(6:10,j);
+%         [t,xt]=ode45(@(t,x)imdyn(t,x,u),[0 Ts],chikk_i(1:5,j));
+%         xhat_kk1_i(:,j) =xhat_kk(:,k)+ xt(end,:)' + chikk_i(6:10,j);
         x_sample_mean=x_sample_mean + omega_i(:,j)*xhat_kk1_i(:,j);
-        E_i(:,j)= xhat_kk1_i(:,j) - xhat_kk(:,k);
         Y_i(:,j)=C*xhat_kk1_i(:,j) + chikk_i(11:12,j);
         Y_sample_mean=Y_sample_mean + omega_i(:,j)*Y_i(:,j);
-        PEEkk1 = PEEkk1 + omega_i(:,j)*E_i(:,j)*E_i(:,j)'; %sample covariance
     end
     xhat_kk1(:,k)=x_sample_mean;
     Yhat_kk1(:,k)=Y_sample_mean;
-    for o=1:Ns
-        e_i(:,o)= Y_i(:,o) -  Y_sample_mean;
-    end
-    % sample covariance PEe, Pee calculation
+    %covariance variable declaration
+    PEEkk1=zeros(5);
     PEekk=zeros(5,2);
     Peekk=zeros(2);
-    for p =1:Ns
+    for p=1:Ns
+        %error calculation
+        e_i(:,p)= Y_i(:,p) -  Yhat_kk1(:,k);
+        E_i(:,p)= xhat_kk1_i(:,p) - xhat_kk1(:,k);
+        % covariances calculation
+        PEEkk1 = PEEkk1 + omega_i(:,p)*E_i(:,p)*E_i(:,p)'; 
         PEekk= PEekk + omega_i(:,p)*E_i(:,p)*e_i(:,p)';
         Peekk= Peekk + omega_i(:,p)*e_i(:,p)*e_i(:,p)';
     end
     %Kalman Gain Update     
     Lk=PEekk*inv(Peekk);
-    e(:,k)= ey(:,k) - Yhat_kk1(:,k) ; % innovation % measurement variable ey is taken from above (near EKF)
-    xhat_kk(:,k+1)=xhat_kk1(:,k) + Lk*e(:,k) ; % state update
+    e_u(:,k)= ey(:,k) - Yhat_kk1(:,k) ; % innovation % measurement variable ey is taken from above (near EKF)
+    xhat_kk(:,k+1)=xhat_kk1(:,k) + Lk*e_u(:,k) ; % state update
     Pkk(:,:,k+1) = PEEkk1 - Lk*Peekk*Lk';  %covariance update
     uPkk(:,:,k+1)=blkdiag(Pkk(:,:,k+1),Q,R); % the big combined covariance matrix update
     chikk(:,k+1)= [xhat_kk(:,k+1);mw';mv'];
+    chikk_i(:,1)=chikk(:,k+1); % first element of chi updated
 end
 %% plots for UKF
 figure(3)
@@ -154,6 +155,22 @@ subplot(322),plot(T,x(2,:),T,xhat_kk(2,:)), ylabel('x_2 (flux)'), title('UKF'),l
 subplot(323),plot(T,x(3,:),T,xhat_kk(3,:)), ylabel('x_3 (flux)'), title('UKF'),legend('true', 'estimated')
 subplot(324),plot(T,x(4,:),T,xhat_kk(4,:)), ylabel('x_4 (flux)'), title('UKF'),legend('true', 'estimated')
 subplot(325),plot(T,x(5,:),T,xhat_kk(5,:)), ylabel('x_5 (angular velocity)'), title('UKF'),legend('true', 'estimated')
-
-
+%% plotting of true, KF, EKF, and UKF
+figure(4)
+subplot(321),plot(T,x(1,:),T,xkk(1,:),T,exkk(1,:),T,xhat_kk(1,:)), ylabel('x_1 (flux)'), title('True vs estimated'),legend('true', 'KF','EKF','UKF')
+subplot(322),plot(T,x(2,:),T,xkk(2,:),T,exkk(2,:),T,xhat_kk(2,:)), ylabel('x_2 (flux)'), title('True vs estimated'),legend('true', 'KF','EKF','UKF')
+subplot(323),plot(T,x(3,:),T,xkk(3,:),T,exkk(3,:),T,xhat_kk(3,:)), ylabel('x_3 (flux)'), title('True vs estimated'),legend('true', 'KF','EKF','UKF')
+subplot(324),plot(T,x(4,:),T,xkk(4,:),T,exkk(4,:),T,xhat_kk(4,:)), ylabel('x_4 (flux)'), title('True vs estimated'),legend('true', 'KF','EKF','UKF')
+subplot(325),plot(T,x(5,:),T,xkk(5,:),T,exkk(5,:),T,xhat_kk(5,:)), ylabel('x_5 (angular velocity)'), title('True vs estimated'),legend('true', 'KF','EKF','UKF')
+%% plotting of EKF and UKF on same plot
+figure(5)
+subplot(321),plot(T,x(1,:),T,exkk(1,:),T,xhat_kk(1,:)), ylabel('x_1 (flux)'), title('True vs estimated'),legend('true', 'EKF','UKF')
+subplot(322),plot(T,x(2,:),T,exkk(2,:),T,xhat_kk(2,:)), ylabel('x_2 (flux)'), title('True vs estimated'),legend('true', 'EKF','UKF')
+subplot(323),plot(T,x(3,:),T,exkk(3,:),T,xhat_kk(3,:)), ylabel('x_3 (flux)'), title('True vs estimated'),legend('true', 'EKF','UKF')
+subplot(324),plot(T,x(4,:),T,exkk(4,:),T,xhat_kk(4,:)), ylabel('x_4 (flux)'), title('True vs estimated'),legend('true','EKF','UKF')
+subplot(325),plot(T,x(5,:),T,exkk(5,:),T,xhat_kk(5,:)), ylabel('x_5 (angular velocity)'), title('True vs estimated'),legend('true','EKF','UKF')
+%% innovation plot for KF and UKF
+figure(6)
+subplot(211),plot(T(2:end),e(1,:),T(2:end),e_u(1,:)), ylabel('x_1 (flux)'), title('innovation'),legend( 'EKF','UKF')
+subplot(212),plot(T(2:end),e(2,:),T(2:end),e_u(2,:)), ylabel('x_2 (flux)'), title('innovation'),legend( 'EKF','UKF')
 
