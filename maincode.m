@@ -1,6 +1,6 @@
 % main code for induction machine project
-
-randn('state',1)
+clear; close all
+randn('state',8)
 k7= -4.448; k8=1;
 N=500; Ts=0.1;
 x_initial=[0.2 -0.6 -0.4 0.1 0.3];
@@ -16,7 +16,7 @@ for i=1:N
     T(:,i+1)=Ts*(i);
 end
 
-%% Finding Stedy state operating point  
+%% Finding Steady state operating point  
 fun = @imdyn_ss; % function with substituted Z(input) values
 x0 = [0 0 0 1 1]; %  point around which fsolve will start search for steady state point
 xss = fsolve(fun,x0); % xss= [0.0148   -0.9998    0.0143   -0.9613    1.0000]
@@ -47,6 +47,9 @@ for i=1:N
     e(:,i)=y(:,i)-C*xkk1(:,i);
     xkk(:,i+1)=xkk1(:,i)+Lk*e(:,i);
     Pkk(:,:,i+1)=(eye(5)-Lk*C)*Pkk1(:,:,1);
+    spec_rad_KF_Pkk(i)=max(abs(eig(Pkk(:,:,i)))); % spectral radii of updated covariance
+    spec_rad_KF_Pkk1(i)=max(abs(eig(Pkk1(:,:,i)))); % spectral radii of predicted covariance
+    betak_KF(:,i)=(x(:,i)-xkk(:,i))'*inv(Pkk(:,:,i))*(x(:,i)-xkk(:,i)); %NESS calculation
 end
 %% plots for KF
 figure(1)
@@ -76,9 +79,12 @@ for i=1:N
     % Kalman gain computation
     Lk=ePkk1(:,:,i)*C'*inv(C*ePkk1(:,:,i)*C'+R);
     % Update step
-    e(:,i)=ey(:,i)-C*exkk1(:,i);
-    exkk(:,i+1)=exkk1(:,i) + Lk*e(:,i);
+    E(:,i)=ey(:,i)-C*exkk1(:,i); % innovation
+    exkk(:,i+1)=exkk1(:,i) + Lk*E(:,i);
     ePkk(:,:,i+1)=(eye(5)-Lk*C)*ePkk1(:,:,i);
+    spec_rad_EKF_Pkk(i)=max(abs(eig(ePkk(:,:,i)))); % spectral radii of updated covariance
+    spec_rad_EKF_Pkk1(i)=max(abs(eig(ePkk1(:,:,i)))); % spectral radii of predicted covariance
+    betak_EKF(:,i)=(x(:,i)-exkk(:,i))'*inv(Pkk(:,:,i))*(x(:,i)-exkk(:,i)); % NESS calculation
 end
 %% plots for EKF
 figure(2)
@@ -91,20 +97,21 @@ subplot(325),plot(T,x(5,:),T,exkk(5,:)), ylabel('x_5 (angular velocity)'), title
 %% Implementation of UKF
 M= 5 + length(mw) + length(mv);
 Ns=2*M+1;
-uPkk(:,:,1)=blkdiag(eye(5),Q,R); %combined covariance matrix
-chikk(:,1)=[x_initial';mw';mv'];%combinded state vector
+uPakk(:,:,1)=blkdiag(eye(5),Q,R); %combined covariance matrix
+chikk(:,1)=[0.9*x_initial';mw';mv'];%combinded state vector
 chikk_i(:,1)=chikk(:,1);
-kappa=1; %tuning parameter
+kappa=3-M; %tuning parameter
 rho=sqrt(M+kappa);
 omega_i(:,1)=kappa/(M+kappa);
-xhat_kk(:,1)=x_initial';
+xhat_kk(:,1)=0.9*x_initial';
+uPkk(:,:,1)=eye(5);
 for k =1:N
     for i=1:M  
         % Sigma point generation
         zeta_i=zeros(M,1);
         zeta_i(i)=1;
-        chikk_i(:,i+1)=chikk(:,k)+ rho*chol(uPkk(:,:,k))*zeta_i;
-        chikk_i(:,i+M+1)=chikk(:,k)- rho*sqrtm(uPkk(:,:,k))*zeta_i;
+        chikk_i(:,i+1)=chikk(:,k)+ rho*chol(uPakk(:,:,k))*zeta_i;
+        chikk_i(:,i+M+1)=chikk(:,k)- rho*chol(uPakk(:,:,k))*zeta_i;
         % weights generation
         omega_i(:,i+1)=1/(2*(M+kappa));
         omega_i(:,i+M+1)=1/(2*(M+kappa));
@@ -134,19 +141,25 @@ for k =1:N
         %error calculation
         e_i(:,p)= Y_i(:,p) -  Yhat_kk1(:,k);
         E_i(:,p)= xhat_kk1_i(:,p) - xhat_kk1(:,k);
+        E_i_kk(:,p)=chikk_i(:,p) - chikk(:,k);  % for the calculatio of Pa matrix
         % covariances calculation
         PEEkk1 = PEEkk1 + omega_i(:,p)*E_i(:,p)*E_i(:,p)'; 
         PEekk= PEekk + omega_i(:,p)*E_i(:,p)*e_i(:,p)';
         Peekk= Peekk + omega_i(:,p)*e_i(:,p)*e_i(:,p)';
+        %Pakk= Pakk + omega_i(:,p)*E_i_kk(:,p)*E_i_kk(:,p)';
     end
     %Kalman Gain Update     
     Lk=PEekk*inv(Peekk);
-    e_u(:,k)= ey(:,k) - Yhat_kk1(:,k) ; % innovation % measurement variable ey is taken from above (near EKF)
+    e_u(:,k)= ey(:,k) - Yhat_kk1(:,k) ; % innovation ---- measurement variable ey is taken from above (near EKF)
     xhat_kk(:,k+1)=xhat_kk1(:,k) + Lk*e_u(:,k) ; % state update
-    Pkk(:,:,k+1) = PEEkk1 - Lk*Peekk*Lk';  %covariance update
-    uPkk(:,:,k+1)=blkdiag(Pkk(:,:,k+1),Q,R); % the big combined covariance matrix update
+    uPkk(:,:,k+1) = PEEkk1 - Lk*Peekk*Lk';  %covariance update
+    uPakk(:,:,k+1)=blkdiag(uPkk(:,:,k+1),Q,R); % the big combined covariance matrix update
     chikk(:,k+1)= [xhat_kk(:,k+1);mw';mv'];
     chikk_i(:,1)=chikk(:,k+1); % first element of chi updated
+    truPkk(k)=trace(uPkk(:,:,k)); %trace of Pkk
+    spec_rad_UKF_Pkk(k)=max(abs(eig(uPkk(:,:,k)))); % spectral radii of updated covariance
+    spec_rad_UKF_Pkk1(k)=max(abs(eig(PEEkk1))); % spectral radii of predicted covariance
+    betak_UKF(:,k)=(x(:,k)-xhat_kk(:,k))'*inv(uPkk(:,:,k))*(x(:,k)-xhat_kk(:,k));% NESS calculation
 end
 %% plots for UKF
 figure(3)
@@ -169,8 +182,68 @@ subplot(322),plot(T,x(2,:),T,exkk(2,:),T,xhat_kk(2,:)), ylabel('x_2 (flux)'), ti
 subplot(323),plot(T,x(3,:),T,exkk(3,:),T,xhat_kk(3,:)), ylabel('x_3 (flux)'), title('True vs estimated'),legend('true', 'EKF','UKF')
 subplot(324),plot(T,x(4,:),T,exkk(4,:),T,xhat_kk(4,:)), ylabel('x_4 (flux)'), title('True vs estimated'),legend('true','EKF','UKF')
 subplot(325),plot(T,x(5,:),T,exkk(5,:),T,xhat_kk(5,:)), ylabel('x_5 (angular velocity)'), title('True vs estimated'),legend('true','EKF','UKF')
-%% innovation plot for KF and UKF
+%% innovation plot for EKF and UKF
 figure(6)
-subplot(211),plot(T(2:end),e(1,:),T(2:end),e_u(1,:)), ylabel('x_1 (flux)'), title('innovation'),legend( 'EKF','UKF')
-subplot(212),plot(T(2:end),e(2,:),T(2:end),e_u(2,:)), ylabel('x_2 (flux)'), title('innovation'),legend( 'EKF','UKF')
+subplot(211),plot(T(2:end),e(1,:),T(2:end),e_u(1,:)), ylabel('y_1'), title('innovation'),legend( 'EKF','UKF')
+subplot(212),plot(T(2:end),e(2,:),T(2:end),e_u(2,:)), ylabel('y_2'), title('innovation'),legend( 'EKF','UKF')
+%% Plot of Spectral radii for KF, EKF and UKF
+figure(7)
+plot(T(2:end),spec_rad_KF_Pkk,T(2:end),spec_rad_KF_Pkk1,T(2:end),spec_rad_EKF_Pkk,T(2:end),spec_rad_EKF_Pkk1,T(2:end),spec_rad_UKF_Pkk,T(2:end), spec_rad_UKF_Pkk1)
+legend('spec radii KF update', 'spec radii KF predicted','spec radii EKF update', 'spec radii EKF predicted','spec radii UKF update', 'spec radii UKF predicted')
+ylabel('spectral radii');xlabel('Sampling instants'); title('Spectral radii of predicted and updated covariances from various filters');
+%% Plot of estimation error for KF, EKF, UKF
+% calculation of 3 standard deviation bounds
+for k =1:N+1
+    cov_e=(x(:,k)-xkk(:,k))*(x(:,k)-xkk(:,k))'; %covariance of error for KF
+    std_KF(:,k)=3*sqrt(diag(cov_e));
+    cov_e=(x(:,k)-exkk(:,k))*(x(:,k)-exkk(:,k))';% covariance of error of EKF
+    std_EKF(:,k)=3*sqrt(diag(cov_e));
+    cov_e=(x(:,k)-xhat_kk(:,k))*(x(:,k)-xhat_kk(:,k))'; % covariance of error for UKF
+    std_UKF(:,k)=3*sqrt(diag(cov_e));
+end
+figure
+subplot(321),plot(T,x(1,:)-xkk(1,:),T,x(1,:)-exkk(1,:),T,x(1,:)-xhat_kk(1,:)), ylabel('estimation error'), title('Estimation error for various filters'),legend('KF','EKF','UKF')
+subplot(322),plot(T,x(2,:)-xkk(1,:),T,x(2,:)-exkk(2,:),T,x(2,:)-xhat_kk(2,:)), ylabel('estimation error'), title('Estimation error for various filters'),legend('KF','EKF','UKF')
+subplot(323),plot(T,x(3,:)-xkk(1,:),T,x(3,:)-exkk(3,:),T,x(3,:)-xhat_kk(3,:)), ylabel('estimation error'), title('Estimation error for various filters'),legend('KF','EKF','UKF')
+subplot(324),plot(T,x(4,:)-xkk(1,:),T,x(4,:)-exkk(4,:),T,x(4,:)-xhat_kk(4,:)), ylabel('estimation error'), title('Estimation error for various filters'),legend('KF','EKF','UKF')
+subplot(325),plot(T,x(5,:)-xkk(1,:),T,x(5,:)-exkk(5,:),T,x(5,:)-xhat_kk(5,:)), ylabel('estimation error'), title('Estimation error for various filters'),legend('KF','EKF','UKF')
+%% Plot of estimation error for EKF and UKF
+figure
+subplot(321),plot(T,x(1,:)-exkk(1,:),T,x(1,:)-xhat_kk(1,:)), ylabel('estimation error'), title('Estimation error for various filters'),legend('EKF','UKF')
+subplot(322),plot(T,x(2,:)-exkk(2,:),T,x(2,:)-xhat_kk(2,:)), ylabel('estimation error'), title('Estimation error for various filters'),legend('EKF','UKF')
+subplot(323),plot(T,x(3,:)-exkk(3,:),T,x(3,:)-xhat_kk(3,:)), ylabel('estimation error'), title('Estimation error for various filters'),legend('EKF','UKF')
+subplot(324),plot(T,x(4,:)-exkk(4,:),T,x(4,:)-xhat_kk(4,:)), ylabel('estimation error'), title('Estimation error for various filters'),legend('EKF','UKF')
+subplot(325),plot(T,x(5,:)-exkk(5,:),T,x(5,:)-xhat_kk(5,:)), ylabel('estimation error'), title('Estimation error for various filters'),legend('EKF','UKF')
+%% mean and covariance of each innovation
+name = {'Mean KF';'Var KF';'Mean EKF';'Ver EKF';'Mean UKF'; 'Var UKF'};
+y1=[mean(e(1,:));var(e(1,:));mean(E(1,:));var(E(1,:));mean(e_u(1,:));var(e_u(1,:))];
+y2=[mean(e(2,:));var(e(2,:));mean(E(2,:));var(E(2,:));mean(e_u(2,:));var(e_u(2,:))];
+table = table(name,y1,y2)
+%% RMSE calculations
+for i=1:5
+    rmse_KF(i)=sqrt(mean((x(i,:) - xkk(i,:)).^2)) ;
+    rmse_EKF(i)=sqrt(mean((x(i,:) - exkk(i,:)).^2)) ;
+    rmse_UKF(i)=sqrt(mean((x(i,:) - xhat_kk(i,:)).^2)) ;
+end
+%% NESS and chi square part
+n=5; alpha = 0.05; 
+zeta1=chi2inv(alpha,n); zeta2=chi2inv(1-alpha,n);
+figure
+plot(T(2:end),betak_KF,T(2:end),betak_EKF,T(2:end),betak_UKF,T(2:end),zeta1*ones(1,N),T(2:end),zeta2*ones(1,N)),legend('KF','EKF', 'UKF','zeta1','zeta2');
+figure
+plot(T(2:end),betak_EKF,T(2:end),betak_UKF,T(2:end),zeta1*ones(1,N),T(2:end),zeta2*ones(1,N)),legend('EKF', 'UKF','zeta1','zeta2');
+% for computing fraction of time instants betak exceeded the bond
+countKF=0;countEKF=0;countUKF=0;
+for k=1:N
+    if betak_KF(k)<=zeta1 &&   betak_KF(k)>zeta2 % KF condition for out of bound
+        countKF=countKF+1;
+    end
+    if betak_EKF(k)<zeta1 &&   betak_EKF(k)>zeta2 %EKF  condition for out of bound
+        countEKF=countEKF+1;
+    end
+    if betak_UKF(k)<zeta1 &&   betak_UKF(k)>zeta2 % UKF condition for out of bound
+        countUKF=countUKF+1;
+    end
+end
+fracKF=1.0*countKF/N; fracEKF=1.0*countEKF/N; fracUKF=1.0*countUKF/N;
 
