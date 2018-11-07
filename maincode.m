@@ -162,7 +162,7 @@ for k =1:N
     betak_UKF(:,k)=(x(:,k)-xhat_kk(:,k))'*inv(uPkk(:,:,k))*(x(:,k)-xhat_kk(:,k));% NESS calculation
 end
 %% plots for UKF
-figure
+figure(3)
 subplot(321),plot(T,x(1,:),T,xhat_kk(1,:)), ylabel('x_1 (flux)'), title('UKF'),legend('true', 'estimated')
 subplot(322),plot(T,x(2,:),T,xhat_kk(2,:)), ylabel('x_2 (flux)'), title('UKF'),legend('true', 'estimated')
 subplot(323),plot(T,x(3,:),T,xhat_kk(3,:)), ylabel('x_3 (flux)'), title('UKF'),legend('true', 'estimated')
@@ -170,38 +170,43 @@ subplot(324),plot(T,x(4,:),T,xhat_kk(4,:)), ylabel('x_4 (flux)'), title('UKF'),l
 subplot(325),plot(T,x(5,:),T,xhat_kk(5,:)), ylabel('x_5 (angular velocity)'), title('UKF'),legend('true', 'estimated')
 close
 %% plotting of true, KF, EKF, and UKF
-figure
+figure(4)
 subplot(321),plot(T,x(1,:),T,xkk(1,:),T,exkk(1,:),T,xhat_kk(1,:)), ylabel('x_1 (flux)'), title('True vs estimated'),legend('true', 'KF','EKF','UKF')
 subplot(322),plot(T,x(2,:),T,xkk(2,:),T,exkk(2,:),T,xhat_kk(2,:)), ylabel('x_2 (flux)'), title('True vs estimated'),legend('true', 'KF','EKF','UKF')
 subplot(323),plot(T,x(3,:),T,xkk(3,:),T,exkk(3,:),T,xhat_kk(3,:)), ylabel('x_3 (flux)'), title('True vs estimated'),legend('true', 'KF','EKF','UKF')
 subplot(324),plot(T,x(4,:),T,xkk(4,:),T,exkk(4,:),T,xhat_kk(4,:)), ylabel('x_4 (flux)'), title('True vs estimated'),legend('true', 'KF','EKF','UKF')
 subplot(325),plot(T,x(5,:),T,xkk(5,:),T,exkk(5,:),T,xhat_kk(5,:)), ylabel('x_5 (angular velocity)'), title('True vs estimated'),legend('true', 'KF','EKF','UKF')
+saveas(figure(4),'plots/true_vs_estimated_all.png')
 %% plotting of true, EKF and UKF on same plot
-figure; suptitle('True Vs Estimated');
-subplot(321),plot(T,x(1,:),T,exkk(1,:),T,xhat_kk(1,:)),xlabel('Sampling instants'), ylabel('x_1 (flux)'),legend('true', 'EKF','UKF')
+figure(5); suptitle('True Vs Estimated');
+subplot(321),plot(T,x(1,:),T,exkk(1,:),T,xhat_kk(1,:)),xlabel('Sampling instants'), ylabel('x_1 (flux)'),legend({'true', 'EKF','UKF'})%,'FontSize',7)
 subplot(322),plot(T,x(2,:),T,exkk(2,:),T,xhat_kk(2,:)),xlabel('Sampling instants'), ylabel('x_2 (flux)'),legend('true', 'EKF','UKF')
 subplot(323),plot(T,x(3,:),T,exkk(3,:),T,xhat_kk(3,:)),xlabel('Sampling instants'), ylabel('x_3 (flux)'),legend('true', 'EKF','UKF')
 subplot(324),plot(T,x(4,:),T,exkk(4,:),T,xhat_kk(4,:)),xlabel('Sampling instants'), ylabel('x_4 (flux)'), legend('true','EKF','UKF')
 subplot(325),plot(T,x(5,:),T,exkk(5,:),T,xhat_kk(5,:)),xlabel('Sampling instants'), ylabel('x_5 (angular velocity)'),legend('true','EKF','UKF')
+saveas(figure(5),'plots/true_vs_estimated_noKF.png')
 %% innovation plot for KF,EKF and UKF
-figure;suptitle('Innovation')
+figure(6);suptitle('Innovation')
 subplot(211),plot(T(2:end),e(1,:),T(2:end),E(1,:),T(2:end),e_u(1,:)),xlabel('Sampling instants'), ylabel('y_1'),legend( 'KF','EKF','UKF')
 subplot(212),plot(T(2:end),e(2,:),T(2:end),E(2,:),T(2:end),e_u(2,:)),xlabel('Sampling instants'), ylabel('y_2'),legend('KF', 'EKF','UKF')
+saveas(figure(6),'plots/innovation_all.png')
 %% innovation plot for EKF and UKF
-figure;suptitle('Innovation')
+figure(7);suptitle('Innovation')
 subplot(211),plot(T(2:end),E(1,:),T(2:end),e_u(1,:)),xlabel('Sampling instants'), ylabel('y_1'),legend( 'EKF','UKF')
 subplot(212),plot(T(2:end),E(2,:),T(2:end),e_u(2,:)),xlabel('Sampling instants'), ylabel('y_2'),legend( 'EKF','UKF')
+saveas(figure(7),'plots/innovation_noKF.png')
 %% Plot of Spectral radii for KF, EKF and UKF
-figure
+figure(8)
 plot(T(2:end),spec_rad_KF_Pkk,T(2:end),spec_rad_KF_Pkk1,T(2:end),spec_rad_EKF_Pkk,T(2:end),spec_rad_EKF_Pkk1,T(2:end),spec_rad_UKF_Pkk,T(2:end), spec_rad_UKF_Pkk1)
 legend('spec radii KF update', 'spec radii KF predicted','spec radii EKF update', 'spec radii EKF predicted','spec radii UKF update', 'spec radii UKF predicted')
 ylabel('spectral radii');xlabel('Sampling instants'); title('Spectral radii of predicted and updated covariances from various filters');
+saveas(figure(8),'plots/spectral_radii_all.png')
 % separately plotted spectral radii
-figure
+figure(9)
 subplot(311), plot(T(2:end),spec_rad_KF_Pkk,T(2:end),spec_rad_KF_Pkk1),legend('spec radii updated', 'spec radii predicted'),title('KF');
 subplot(312), plot(T(2:end),spec_rad_EKF_Pkk,T(2:end),spec_rad_EKF_Pkk1),legend('spec radii updated', 'spec radii predicted'),title('EKF');
 subplot(313), plot(T(2:end),spec_rad_UKF_Pkk,T(2:end),spec_rad_UKF_Pkk1),legend('spec radii updated', 'spec radii predicted'),title('UKF');
-
+saveas(figure(9),'plots/spectral_radii_all_subplots.png')
 %% Plot of estimation error for KF, EKF, UKF
 % calculation of 3 standard deviation bounds
 for k =1:N+1
@@ -212,58 +217,61 @@ for k =1:N+1
     cov_e=(x(:,k)-xhat_kk(:,k))*(x(:,k)-xhat_kk(:,k))'; % covariance of error for UKF
     std_UKF(:,k)=3*sqrt(diag(cov_e));
 end
-figure; suptitle('Estimation error')
+figure(10); suptitle('Estimation error')
 subplot(321),plot(T,x(1,:)-xkk(1,:),T,x(1,:)-exkk(1,:),T,x(1,:)-xhat_kk(1,:)), ylabel('x_1'),xlabel('Sampling instatns'),legend('KF','EKF','UKF')
 subplot(322),plot(T,x(2,:)-xkk(1,:),T,x(2,:)-exkk(2,:),T,x(2,:)-xhat_kk(2,:)), ylabel('x_2'),xlabel('Sampling instatns'),legend('KF','EKF','UKF')
 subplot(323),plot(T,x(3,:)-xkk(1,:),T,x(3,:)-exkk(3,:),T,x(3,:)-xhat_kk(3,:)), ylabel(' x_3'),xlabel('Sampling instatns'),legend('KF','EKF','UKF')
 subplot(324),plot(T,x(4,:)-xkk(1,:),T,x(4,:)-exkk(4,:),T,x(4,:)-xhat_kk(4,:)), ylabel('x_4'),xlabel('Sampling instatns'),legend('KF','EKF','UKF')
 subplot(325),plot(T,x(5,:)-xkk(1,:),T,x(5,:)-exkk(5,:),T,x(5,:)-xhat_kk(5,:)), ylabel('x_5'),xlabel('Sampling instatns'),legend('KF','EKF','UKF')
+saveas(figure(10),'plots/estimation_error_all.png')
 %% Plot of estimation error for EKF and UKF along with standard deviation bounds
 ttl='Estimation error for filters along with \pm 3 standard deviation bounds';
-figure;plot(T,x(1,:)-exkk(1,:),T,std_EKF(1,:),T,-std_EKF(1,:),T,x(1,:)-xhat_kk(1,:),T,std_UKF(1,:),T,-std_UKF(1,:)), ylabel('x_1'),title(ttl),xlabel('Sampling instatns'),legend('EKF','+3\sigma EKF','-3\sigma EKF','UKF','+3\sigma UKF','-3\sigma UKF');saveas(figure(1),'plots/estimation_error_noKF_sigma_s1.eps','epsc')
-figure;plot(T,x(2,:)-exkk(2,:),T,std_EKF(2,:),T,-std_EKF(2,:),T,x(2,:)-xhat_kk(2,:),T,std_UKF(2,:),T,-std_UKF(2,:)), ylabel('x_2'),title(ttl),xlabel('Sampling instatns'),legend('EKF','+3\sigma EKF','-3\sigma EKF','UKF','+3\sigma UKF','-3\sigma UKF');saveas(figure(2),'plots/estimation_error_noKF_sigma_s2.eps','epsc')
-figure;plot(T,x(3,:)-exkk(3,:),T,std_EKF(3,:),T,-std_EKF(3,:),T,x(3,:)-xhat_kk(3,:),T,std_UKF(3,:),T,-std_UKF(3,:)), ylabel('x_3'),title(ttl),xlabel('Sampling instatns'),legend('EKF','+3\sigma EKF','-3\sigma EKF','UKF','+3\sigma UKF','-3\sigma UKF');saveas(figure(3),'plots/estimation_error_noKF_sigma_s3.eps','epsc')
-figure;plot(T,x(4,:)-exkk(4,:),T,std_EKF(4,:),T,-std_EKF(4,:),T,x(4,:)-xhat_kk(4,:),T,std_UKF(4,:),T,-std_UKF(4,:)), ylabel('x_4'),title(ttl),xlabel('Sampling instatns'),legend('EKF','+3\sigma EKF','-3\sigma EKF','UKF','+3\sigma UKF','-3\sigma UKF');saveas(figure(4),'plots/estimation_error_noKF_sigma_s4.eps','epsc')
-figure;plot(T,x(5,:)-exkk(5,:),T,std_EKF(5,:),T,-std_EKF(5,:),T,x(5,:)-xhat_kk(5,:),T,std_UKF(5,:),T,-std_UKF(5,:)), ylabel('x_5'),title(ttl),xlabel('Sampling instatns'),legend('EKF','+3\sigma EKF','-3\sigma EKF','UKF','+3\sigma UKF','-3\sigma UKF');saveas(figure(5),'plots/estimation_error_noKF_sigma_s5.eps','epsc')
+figure(11);plot(T,x(1,:)-exkk(1,:),T,std_EKF(1,:),T,-std_EKF(1,:),T,x(1,:)-xhat_kk(1,:),T,std_UKF(1,:),T,-std_UKF(1,:)), ylabel('x_1'),title(ttl),xlabel('Sampling instatns'),legend('EKF','+3\sigma EKF','-3\sigma EKF','UKF','+3\sigma UKF','-3\sigma UKF');saveas(figure(11),'plots/estimation_error_noKF_sigma_s1.png')
+figure(12);plot(T,x(2,:)-exkk(2,:),T,std_EKF(2,:),T,-std_EKF(2,:),T,x(2,:)-xhat_kk(2,:),T,std_UKF(2,:),T,-std_UKF(2,:)), ylabel('x_2'),title(ttl),xlabel('Sampling instatns'),legend('EKF','+3\sigma EKF','-3\sigma EKF','UKF','+3\sigma UKF','-3\sigma UKF');saveas(figure(12),'plots/estimation_error_noKF_sigma_s2.png')
+figure(13);plot(T,x(3,:)-exkk(3,:),T,std_EKF(3,:),T,-std_EKF(3,:),T,x(3,:)-xhat_kk(3,:),T,std_UKF(3,:),T,-std_UKF(3,:)), ylabel('x_3'),title(ttl),xlabel('Sampling instatns'),legend('EKF','+3\sigma EKF','-3\sigma EKF','UKF','+3\sigma UKF','-3\sigma UKF');saveas(figure(13),'plots/estimation_error_noKF_sigma_s3.png')
+figure(14);plot(T,x(4,:)-exkk(4,:),T,std_EKF(4,:),T,-std_EKF(4,:),T,x(4,:)-xhat_kk(4,:),T,std_UKF(4,:),T,-std_UKF(4,:)), ylabel('x_4'),title(ttl),xlabel('Sampling instatns'),legend('EKF','+3\sigma EKF','-3\sigma EKF','UKF','+3\sigma UKF','-3\sigma UKF');saveas(figure(14),'plots/estimation_error_noKF_sigma_s4.png')
+figure(15);plot(T,x(5,:)-exkk(5,:),T,std_EKF(5,:),T,-std_EKF(5,:),T,x(5,:)-xhat_kk(5,:),T,std_UKF(5,:),T,-std_UKF(5,:)), ylabel('x_5'),title(ttl),xlabel('Sampling instatns'),legend('EKF','+3\sigma EKF','-3\sigma EKF','UKF','+3\sigma UKF','-3\sigma UKF');saveas(figure(15),'plots/estimation_error_noKF_sigma_s5.png')
 %% Plot of estimation error for EKF along with standard deviation bounds
-figure;suptitle('Estimation error for EKF along with \pm 3 standard deviation bounds')
+figure(16);suptitle('Estimation error for EKF along with \pm 3 standard deviation bounds')
 subplot(321),plot(T,x(1,:)-exkk(1,:),T,std_EKF(1,:),T,-std_EKF(1,:)), ylabel('x_1'),xlabel('Sampling instatns'),legend('EKF','+3\sigma EKF','-3\sigma EKF')
 subplot(322),plot(T,x(2,:)-exkk(2,:),T,std_EKF(2,:),T,-std_EKF(2,:)), ylabel('x_2'),xlabel('Sampling instatns'),legend('EKF','+3\sigma EKF','-3\sigma EKF')
 subplot(323),plot(T,x(3,:)-exkk(3,:),T,std_EKF(3,:),T,-std_EKF(3,:)), ylabel('x_3'),xlabel('Sampling instatns'),legend('EKF','+3\sigma EKF','-3\sigma EKF')
 subplot(324),plot(T,x(4,:)-exkk(4,:),T,std_EKF(4,:),T,-std_EKF(4,:)), ylabel('x_4'),xlabel('Sampling instatns'),legend('EKF','+3\sigma EKF','-3\sigma EKF')
 subplot(325),plot(T,x(5,:)-exkk(5,:),T,std_EKF(5,:),T,-std_EKF(5,:)), ylabel('x_5'),xlabel('Sampling instatns'),legend('EKF','+3\sigma EKF','-3\sigma EKF')
-saveas(figure(1),'plots/estimation_error_EKF_sigma_all_states.png')
+saveas(figure(16),'plots/estimation_error_EKF_sigma_all_states.png')
 %% Plot of estimation error for UKF along with standard deviation bounds
-figure;suptitle('Estimation error for UKF along with \pm 3 standard deviation bounds')
+figure(17);suptitle('Estimation error for UKF along with \pm 3 standard deviation bounds')
 subplot(321),plot(T,x(1,:)-xhat_kk(1,:),T,std_UKF(1,:),T,-std_UKF(1,:)), ylabel('x_1'),xlabel('Sampling instatns'),legend({'UKF','+3\sigma UKF','-3\sigma UKF'})%,'Location','NorthEastOutside')
 subplot(322),plot(T,x(2,:)-xhat_kk(2,:),T,std_UKF(2,:),T,-std_UKF(2,:)), ylabel('x_2'),xlabel('Sampling instatns'),legend({'UKF','+3\sigma UKF','-3\sigma UKF'})%,'Location','NorthEastOutside')
 subplot(323),plot(T,x(3,:)-xhat_kk(3,:),T,std_UKF(3,:),T,-std_UKF(3,:)), ylabel('x_3'),xlabel('Sampling instatns'),legend({'UKF','+3\sigma UKF','-3\sigma UKF'})%,'Location','NorthEastOutside')
 subplot(324),plot(T,x(4,:)-xhat_kk(4,:),T,std_UKF(4,:),T,-std_UKF(4,:)), ylabel('x_4'),xlabel('Sampling instatns'),legend({'UKF','+3\sigma UKF','-3\sigma UKF'})%,'Location','NorthEastOutside')
 subplot(325),plot(T,x(5,:)-xhat_kk(5,:),T,std_UKF(5,:),T,-std_UKF(5,:)), ylabel('x_5'),xlabel('Sampling instatns'),legend({'UKF','+3\sigma UKF','-3\sigma UKF'})%,'Location','NorthEastOutside')
-saveas(figure(1),'plots/estimation_error_UKF_sigma_all_states.png')
+saveas(figure(17),'plots/estimation_error_UKF_sigma_all_states.png')
 
 %% mean and covariance of each innovation %table1
-name = {'Mean KF';'Var KF';'Mean EKF';'Ver EKF';'Mean UKF'; 'Var UKF'};
+name = {'Mean KF';'Var KF';'Mean EKF';'Var EKF';'Mean UKF'; 'Var UKF'};
 y1=[mean(e(1,:));var(e(1,:));mean(E(1,:));var(E(1,:));mean(e_u(1,:));var(e_u(1,:))];
 y2=[mean(e(2,:));var(e(2,:));mean(E(2,:));var(E(2,:));mean(e_u(2,:));var(e_u(2,:))];
-table = table(name,y1,y2)
+table = table(name,y1,y2) % for making table of mean and variances
 %% RMSE calculations % table2
 for i=1:5
     rmse_KF(i)=sqrt(mean((x(i,:) - xkk(i,:)).^2)) ;
     rmse_EKF(i)=sqrt(mean((x(i,:) - exkk(i,:)).^2)) ;
     rmse_UKF(i)=sqrt(mean((x(i,:) - xhat_kk(i,:)).^2)) ;
 end
-
+disp('RMSE for KF for all states respectively '); rmse_KF
+disp('RMSE for EKF for all states respectively '); rmse_EKF
+disp('RMSE for UKF for all states respectively '); rmse_UKF
 %% NESS and chi square part
-n=5; alpha = 0.05; 
-zeta1=chi2inv(alpha,n); zeta2=chi2inv(1-alpha,n);
-figure;suptitle('\beta_k for kF,EKF and UKF')
+n=5; alpha = 0.05
+zeta1=chi2inv(alpha,n); zeta2=chi2inv(1-alpha,n)
+figure(18);suptitle('\beta_k for kF,EKF and UKF')
 plot(T(2:end),betak_KF,T(2:end),betak_EKF,T(2:end),betak_UKF,T(2:end),zeta1*ones(1,N),T(2:end),zeta2*ones(1,N)),legend('KF','EKF', 'UKF','zeta1','zeta2')
-xlabel('Sampling instants');ylabel('\beta_k');saveas(figure(1),'plots/betak_all.png')
-figure;suptitle('\beta_k for EKF and UKF')
+xlabel('Sampling instants');ylabel('\beta_k');saveas(figure(18),'plots/betak_all.png')
+figure(19);suptitle('\beta_k for EKF and UKF')
 plot(T(2:end),betak_EKF,T(2:end),betak_UKF,T(2:end),zeta1*ones(1,N),T(2:end),zeta2*ones(1,N)),legend('EKF', 'UKF','zeta1','zeta2')
-xlabel('Sampling instants');ylabel('\beta_k');saveas(figure(1),'plots/betak_noKF.png')
-% for computing fraction of time instants betak exceeded the bond
+xlabel('Sampling instants');ylabel('\beta_k');saveas(figure(19),'plots/betak_noKF.png')
+%% for computing fraction of time instants betak exceeded the bond
 countKF=0;countEKF=0;countUKF=0;
 for k=1:N
     if betak_KF(k)<=zeta1 &&   betak_KF(k)>zeta2 % KF condition for out of bound
@@ -276,5 +284,7 @@ for k=1:N
         countUKF=countUKF+1;
     end
 end
-fracKF=1.0*countKF/N; fracEKF=1.0*countEKF/N; fracUKF=1.0*countUKF/N;
+fracKF=1.0*countKF/N
+fracEKF=1.0*countEKF/N
+fracUKF=1.0*countUKF/N
 
