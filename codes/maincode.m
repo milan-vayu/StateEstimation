@@ -1,4 +1,9 @@
-% main code for induction machine project
+%% Ram Milan Verma ; 150010037
+% Project - INDUCTION MACHINE
+
+% main code
+% i have save all plots generated in 'plots' folder with appropriate name. 
+% In case error is encountered while plotting please make a folder with same name
 clear; close all
 randn('state',8)
 k7= -4.448; k8=1;
