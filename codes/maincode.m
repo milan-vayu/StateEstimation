@@ -4,6 +4,7 @@ randn('state',8)
 k7= -4.448; k8=1;
 N=500; Ts=0.1;
 x_initial=[0.2 -0.6 -0.4 0.1 0.3];
+x_paper = [0.5 0.1 0.3 -0.2 4]; % initial estimate of x used in the paper by Kandepu
 x(:,1)=x_initial; % initial condition
 u=[1 1 0];  % constant input 
 Q=(1e-4)*eye(5);mw=[0 0 0 0 0];
@@ -84,7 +85,7 @@ for i=1:N
     ePkk(:,:,i+1)=(eye(5)-Lk*C)*ePkk1(:,:,i);
     spec_rad_EKF_Pkk(i)=max(abs(eig(ePkk(:,:,i)))); % spectral radii of updated covariance
     spec_rad_EKF_Pkk1(i)=max(abs(eig(ePkk1(:,:,i)))); % spectral radii of predicted covariance
-    betak_EKF(:,i)=(x(:,i)-exkk(:,i))'*inv(Pkk(:,:,i))*(x(:,i)-exkk(:,i)); % NESS calculation
+    betak_EKF(:,i)=(x(:,i)-exkk(:,i))'*inv(ePkk(:,:,i))*(x(:,i)-exkk(:,i)); % NESS calculation
 end
 %% plots for EKF
 figure(2)
@@ -141,7 +142,7 @@ for k =1:N
         %error calculation
         e_i(:,p)= Y_i(:,p) -  Yhat_kk1(:,k);
         E_i(:,p)= xhat_kk1_i(:,p) - xhat_kk1(:,k);
-        E_i_kk(:,p)=chikk_i(:,p) - chikk(:,k);  % for the calculatio of Pa matrix
+        %E_i_kk(:,p)=chikk_i(:,p) - chikk(:,k);  % for the calculation of Pa matrix
         % covariances calculation
         PEEkk1 = PEEkk1 + omega_i(:,p)*E_i(:,p)*E_i(:,p)'; 
         PEekk= PEekk + omega_i(:,p)*E_i(:,p)*e_i(:,p)';
@@ -265,22 +266,28 @@ disp('RMSE for UKF for all states respectively '); rmse_UKF
 %% NESS and chi square part
 n=5; alpha = 0.05
 zeta1=chi2inv(alpha,n); zeta2=chi2inv(1-alpha,n)
+% betak plot for all filter
 figure(18);suptitle('\beta_k for kF,EKF and UKF')
 plot(T(2:end),betak_KF,T(2:end),betak_EKF,T(2:end),betak_UKF,T(2:end),zeta1*ones(1,N),T(2:end),zeta2*ones(1,N)),legend('KF','EKF', 'UKF','zeta1','zeta2')
 xlabel('Sampling instants');ylabel('\beta_k');saveas(figure(18),'plots/betak_all.png')
+% betak plot for EKF and UKF together
 figure(19);suptitle('\beta_k for EKF and UKF')
 plot(T(2:end),betak_EKF,T(2:end),betak_UKF,T(2:end),zeta1*ones(1,N),T(2:end),zeta2*ones(1,N)),legend('EKF', 'UKF','zeta1','zeta2')
 xlabel('Sampling instants');ylabel('\beta_k');saveas(figure(19),'plots/betak_noKF.png')
+% betak plot for EKF only
+figure(20);suptitle('\beta_k for EKF and UKF')
+plot(T(2:end),betak_EKF,T(2:end),zeta1*ones(1,N),T(2:end),zeta2*ones(1,N)),legend('EKF', 'UKF','zeta1','zeta2')
+xlabel('Sampling instants');ylabel('\beta_k');saveas(figure(20),'plots/betak_EKF.png')
 %% for computing fraction of time instants betak exceeded the bond
 countKF=0;countEKF=0;countUKF=0;
 for k=1:N
-    if betak_KF(k)<=zeta1 &&   betak_KF(k)>zeta2 % KF condition for out of bound
+    if betak_KF(k)<=zeta1 ||   betak_KF(k)>=zeta2 % KF condition for out of bound
         countKF=countKF+1;
     end
-    if betak_EKF(k)<zeta1 &&   betak_EKF(k)>zeta2 %EKF  condition for out of bound
+    if betak_EKF(k)<=zeta1 ||   betak_EKF(k)>=zeta2 %EKF  condition for out of bound
         countEKF=countEKF+1;
     end
-    if betak_UKF(k)<zeta1 &&   betak_UKF(k)>zeta2 % UKF condition for out of bound
+    if betak_UKF(k)<=zeta1 ||   betak_UKF(k)>=zeta2 % UKF condition for out of bound
         countUKF=countUKF+1;
     end
 end
