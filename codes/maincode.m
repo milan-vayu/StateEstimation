@@ -65,7 +65,7 @@ close;
 for i=1:N
     ey(:,i)=C*x(:,i) + vk(i,:)' ; %measurement in non-delta y form
 end
-exkk(:,1)=0.9*x(:,1); %0.9*initial state 
+exkk(:,1)=x_paper; %0.9*initial state 
 ePkk(:,:,1)=eye(5);
 
 for i=1:N
@@ -99,12 +99,12 @@ close
 M= 5 + length(mw) + length(mv);
 Ns=2*M+1;
 uPakk(:,:,1)=blkdiag(eye(5),Q,R); %combined covariance matrix
-chikk(:,1)=[0.9*x_initial';mw';mv'];%combinded state vector
+chikk(:,1)=[x_paper';mw';mv'];%combinded state vector
 chikk_i(:,1)=chikk(:,1);
 kappa=3-M; %tuning parameter
 rho=sqrt(M+kappa);
 omega_i(:,1)=kappa/(M+kappa);
-xhat_kk(:,1)=0.9*x_initial';
+xhat_kk(:,1)=x_paper;
 uPkk(:,:,1)=eye(5);
 for k =1:N
     for i=1:M  
@@ -275,8 +275,8 @@ figure(19);suptitle('\beta_k for EKF and UKF')
 plot(T(2:end),betak_EKF,T(2:end),betak_UKF,T(2:end),zeta1*ones(1,N),T(2:end),zeta2*ones(1,N)),legend('EKF', 'UKF','zeta1','zeta2')
 xlabel('Sampling instants');ylabel('\beta_k');saveas(figure(19),'plots/betak_noKF.png')
 % betak plot for EKF only
-figure(20);suptitle('\beta_k for EKF and UKF')
-plot(T(2:end),betak_EKF,T(2:end),zeta1*ones(1,N),T(2:end),zeta2*ones(1,N)),legend('EKF', 'UKF','zeta1','zeta2')
+figure(20);suptitle('\beta_k for EKF')
+plot(T(2:end),betak_EKF,T(2:end),zeta1*ones(1,N),T(2:end),zeta2*ones(1,N)),legend('EKF','zeta1','zeta2')
 xlabel('Sampling instants');ylabel('\beta_k');saveas(figure(20),'plots/betak_EKF.png')
 %% for computing fraction of time instants betak exceeded the bond
 countKF=0;countEKF=0;countUKF=0;
