@@ -4,7 +4,7 @@ randn('state',8)
 k7= -4.448; k8=1;
 N=500; Ts=0.1;
 x_initial=[0.2 -0.6 -0.4 0.1 0.3];
-x_paper = [0.5 0.1 0.3 -0.2 4]; % initial estimate of x used in the paper by Kandepu
+%x_paper = [0.5 0.1 0.3 -0.2 4]; % initial estimate of x used in the paper by Kandepu
 x(:,1)=x_initial; % initial condition
 u=[1 1 0];  % constant input 
 Q=(1e-4)*eye(5);mw=[0 0 0 0 0];
@@ -65,7 +65,7 @@ close;
 for i=1:N
     ey(:,i)=C*x(:,i) + vk(i,:)' ; %measurement in non-delta y form
 end
-exkk(:,1)=x_paper; %0.9*initial state 
+exkk(:,1)=0.9*x_initial; %0.9*initial state 
 ePkk(:,:,1)=eye(5);
 
 for i=1:N
@@ -99,12 +99,12 @@ close
 M= 5 + length(mw) + length(mv);
 Ns=2*M+1;
 uPakk(:,:,1)=blkdiag(eye(5),Q,R); %combined covariance matrix
-chikk(:,1)=[x_paper';mw';mv'];%combinded state vector
+chikk(:,1)=[0.9*x_initial';mw';mv'];%combinded state vector
 chikk_i(:,1)=chikk(:,1);
 kappa=3-M; %tuning parameter
 rho=sqrt(M+kappa);
 omega_i(:,1)=kappa/(M+kappa);
-xhat_kk(:,1)=x_paper;
+xhat_kk(:,1)=0.9*x_initial;
 uPkk(:,:,1)=eye(5);
 for k =1:N
     for i=1:M  
